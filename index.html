@@ -1,0 +1,511 @@
+import React, { useState, useEffect, useMemo } from 'react';
+
+// --- Helper Functions & Icons ---
+
+// Icon components (inline SVG for portability)
+const PlusIcon = ({ className = "w-6 h-6" }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <line x1="12" y1="5" x2="12" y2="19"></line>
+    <line x1="5" y1="12" x2="19" y2="12"></line>
+  </svg>
+);
+
+const XIcon = ({ className = "w-6 h-6" }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <line x1="18" y1="6" x2="6" y2="18"></line>
+    <line x1="6" y1="6" x2="18" y2="18"></line>
+  </svg>
+);
+
+const DollarSignIcon = ({ className = "w-4 h-4" }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <line x1="12" y1="1" x2="12" y2="23"></line>
+    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+  </svg>
+);
+
+const EditIcon = ({ className = "w-4 h-4" }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+  </svg>
+);
+
+const TrashIcon = ({ className = "w-4 h-4" }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <polyline points="3 6 5 6 21 6"></polyline>
+        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+        <line x1="10" y1="11" x2="10" y2="17"></line>
+        <line x1="14" y1="11" x2="14" y2="17"></line>
+    </svg>
+);
+
+
+// Function to format currency
+const formatCurrency = (amount) => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+  }).format(amount);
+};
+
+// Initial project data
+const initialProjectsData = [
+  {
+    id: 1,
+    name: "Desarrollo de E-commerce",
+    client: "TiendaModa Online",
+    totalCost: 15000,
+    amountPaid: 8500,
+    stages: [
+      { id: 1, name: "Planificación y Diseño UI/UX", completed: true },
+      { id: 2, name: "Desarrollo del Frontend", completed: true },
+      { id: 3, name: "Desarrollo del Backend y Base de Datos", completed: false },
+      { id: 4, name: "Integración de Pasarela de Pagos", completed: false },
+      { id: 5, name: "Pruebas y Despliegue", completed: false },
+    ],
+  },
+  {
+    id: 2,
+    name: "Campaña de Marketing Digital",
+    client: "Gourmet Foods",
+    totalCost: 7500,
+    amountPaid: 7500,
+    stages: [
+        { id: 1, name: "Investigación de mercado", completed: true },
+        { id: 2, name: "Creación de contenido", completed: true },
+        { id: 3, name: "Gestión de redes sociales", completed: true },
+        { id: 4, name: "Análisis de resultados", completed: true },
+    ],
+  },
+  {
+    id: 3,
+    name: "Aplicación Móvil de Fitness",
+    client: "ActívateYa",
+    totalCost: 25000,
+    amountPaid: 5000,
+    stages: [
+      { id: 1, name: "Definición de requerimientos", completed: true },
+      { id: 2, name: "Diseño de prototipos", completed: false },
+      { id: 3, name: "Desarrollo iOS", completed: false },
+      { id: 4, name: "Desarrollo Android", completed: false },
+      { id: 5, name: "Lanzamiento en tiendas", completed: false },
+    ],
+  },
+];
+
+
+// --- Components ---
+
+function ProjectCard({ project, onSelectProject, onEdit, onDelete }) {
+  const progress = useMemo(() => {
+    if (project.stages.length === 0) return 0;
+    const completedStages = project.stages.filter(s => s.completed).length;
+    return Math.round((completedStages / project.stages.length) * 100);
+  }, [project.stages]);
+
+  const balanceDue = project.totalCost - project.amountPaid;
+
+  const getStatusInfo = (progress) => {
+    if (progress === 100) return { text: "Completado", color: "bg-green-500", textColor: "text-green-800", ringColor: "ring-green-600/20" };
+    if (progress > 0) return { text: "En Progreso", color: "bg-yellow-400", textColor: "text-yellow-800", ringColor: "ring-yellow-600/20" };
+    return { text: "Pendiente", color: "bg-gray-400", textColor: "text-gray-800", ringColor: "ring-gray-500/20" };
+  };
+
+  const status = getStatusInfo(progress);
+
+  return (
+    <div className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden transform hover:-translate-y-1 flex flex-col">
+      <div className="p-6 flex-grow">
+        <div className="flex justify-between items-start">
+          <div>
+            <p className="text-sm font-medium text-indigo-600">{project.client}</p>
+            <h3 className="text-xl font-bold text-gray-800 mt-1">{project.name}</h3>
+          </div>
+          <div className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold ${status.textColor} ${status.color}/20 ring-1 ring-inset ${status.ringColor}`}>
+            {status.text}
+          </div>
+        </div>
+
+        <div className="mt-6">
+          <div className="flex justify-between items-center text-sm text-gray-600">
+            <p>Progreso</p>
+            <p className="font-semibold">{progress}%</p>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2.5 mt-2">
+            <div className={`${status.color} h-2.5 rounded-full`} style={{ width: `${progress}%` }}></div>
+          </div>
+        </div>
+
+        <div className="mt-6 border-t border-gray-200 pt-4 grid grid-cols-3 gap-4 text-center">
+          <div>
+            <p className="text-sm text-gray-500">Total</p>
+            <p className="text-lg font-semibold text-gray-800">{formatCurrency(project.totalCost)}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-500">Cubierto</p>
+            <p className="text-lg font-semibold text-green-600">{formatCurrency(project.amountPaid)}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-500">Pendiente</p>
+            <p className={`text-lg font-semibold ${balanceDue > 0 ? 'text-red-600' : 'text-gray-800'}`}>{formatCurrency(balanceDue)}</p>
+          </div>
+        </div>
+      </div>
+      <div className="p-4 bg-gray-50 border-t border-gray-100 grid grid-cols-3 gap-2">
+          <button
+            onClick={() => onEdit(project)}
+            className="flex items-center justify-center gap-2 w-full bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400 transition-colors duration-300"
+          >
+            <EditIcon /> Editar
+          </button>
+          <button
+            onClick={() => onSelectProject(project)}
+            className="col-span-1 w-full bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-300"
+          >
+            Detalles
+          </button>
+          <button
+            onClick={() => onDelete(project.id)}
+            className="flex items-center justify-center gap-2 w-full bg-red-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-400 transition-colors duration-300"
+          >
+            <TrashIcon /> Borrar
+          </button>
+      </div>
+    </div>
+  );
+}
+
+function ProjectDetailModal({ project, onClose, onUpdateProject }) {
+    if (!project) return null;
+
+    const [currentProject, setCurrentProject] = useState(project);
+    const [newPayment, setNewPayment] = useState('');
+
+    useEffect(() => {
+        setCurrentProject(project);
+    }, [project]);
+
+    const handleStageToggle = (stageId) => {
+        const updatedStages = currentProject.stages.map(stage =>
+            stage.id === stageId ? { ...stage, completed: !stage.completed } : stage
+        );
+        const updatedProject = { ...currentProject, stages: updatedStages };
+        setCurrentProject(updatedProject);
+        onUpdateProject(updatedProject);
+    };
+
+    const handleAddPayment = (e) => {
+        e.preventDefault();
+        const paymentAmount = parseFloat(newPayment);
+        if (!isNaN(paymentAmount) && paymentAmount > 0) {
+            const newAmountPaid = currentProject.amountPaid + paymentAmount;
+            const updatedProject = { ...currentProject, amountPaid: Math.min(newAmountPaid, currentProject.totalCost) };
+            setCurrentProject(updatedProject);
+            onUpdateProject(updatedProject);
+            setNewPayment('');
+        }
+    };
+
+    const progress = useMemo(() => {
+        if(currentProject.stages.length === 0) return 0;
+        const completedStages = currentProject.stages.filter(s => s.completed).length;
+        return Math.round((completedStages / currentProject.stages.length) * 100);
+    }, [currentProject.stages]);
+
+    const balanceDue = currentProject.totalCost - currentProject.amountPaid;
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4" onClick={onClose}>
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                <div className="sticky top-0 bg-white border-b border-gray-200 p-6 flex justify-between items-center z-10">
+                    <div>
+                        <p className="text-sm font-medium text-indigo-600">{currentProject.client}</p>
+                        <h2 className="text-2xl font-bold text-gray-900">{currentProject.name}</h2>
+                    </div>
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
+                        <XIcon className="w-8 h-8" />
+                    </button>
+                </div>
+
+                <div className="p-6">
+                    <div className="mb-8">
+                        <h3 className="text-lg font-semibold text-gray-800 mb-3">Progreso del Proyecto ({progress}%)</h3>
+                        <div className="w-full bg-gray-200 rounded-full h-4">
+                            <div className="bg-indigo-600 h-4 rounded-full transition-all duration-500" style={{ width: `${progress}%` }}></div>
+                        </div>
+                    </div>
+
+                    <div className="mb-8 bg-gray-50 rounded-lg p-4">
+                        <h3 className="text-lg font-semibold text-gray-800 mb-4">Resumen Financiero</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                            <div className="bg-white p-3 rounded-md shadow-sm">
+                                <p className="text-sm text-gray-500">Costo Total</p>
+                                <p className="text-xl font-bold text-gray-800">{formatCurrency(currentProject.totalCost)}</p>
+                            </div>
+                            <div className="bg-white p-3 rounded-md shadow-sm">
+                                <p className="text-sm text-gray-500">Monto Cubierto</p>
+                                <p className="text-xl font-bold text-green-600">{formatCurrency(currentProject.amountPaid)}</p>
+                            </div>
+                            <div className="bg-white p-3 rounded-md shadow-sm">
+                                <p className="text-sm text-gray-500">Saldo Pendiente</p>
+                                <p className={`text-xl font-bold ${balanceDue > 0 ? 'text-red-600' : 'text-gray-800'}`}>{formatCurrency(balanceDue)}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="mb-8">
+                        <h3 className="text-lg font-semibold text-gray-800 mb-3">Etapas del Proyecto</h3>
+                        <div className="space-y-3">
+                            {currentProject.stages.map((stage) => (
+                                <label key={stage.id} htmlFor={`stage-${stage.id}`} className={`flex items-center p-4 rounded-lg border transition-all duration-300 cursor-pointer ${stage.completed ? 'bg-green-50 border-green-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-gray-50'}`}>
+                                    <input
+                                        id={`stage-${stage.id}`}
+                                        type="checkbox"
+                                        checked={stage.completed}
+                                        onChange={() => handleStageToggle(stage.id)}
+                                        className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                    />
+                                    <span className={`ml-4 text-base ${stage.completed ? 'text-gray-500 line-through' : 'text-gray-700'}`}>{stage.name}</span>
+                                </label>
+                            ))}
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h3 className="text-lg font-semibold text-gray-800 mb-3">Añadir Pago</h3>
+                        <form onSubmit={handleAddPayment} className="flex flex-col sm:flex-row gap-3">
+                            <div className="relative flex-grow">
+                                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                                   <DollarSignIcon className="h-5 w-5 text-gray-400" />
+                                </div>
+                                <input
+                                    type="number"
+                                    value={newPayment}
+                                    onChange={(e) => setNewPayment(e.target.value)}
+                                    placeholder="Monto"
+                                    min="0.01"
+                                    step="0.01"
+                                    className="block w-full rounded-md border-gray-300 py-2 pl-10 pr-4 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                                />
+                            </div>
+                            <button
+                                type="submit"
+                                className="bg-green-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-300 disabled:bg-green-300"
+                                disabled={!newPayment || balanceDue <= 0}
+                            >
+                                Registrar Pago
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function ProjectFormModal({ isOpen, onClose, onSave, project }) {
+  if (!isOpen) return null;
+
+  const [formData, setFormData] = useState({
+    name: '',
+    client: '',
+    totalCost: '',
+    stages: [{ id: Date.now(), name: '', completed: false }],
+  });
+  
+  const isEditing = useMemo(() => project != null, [project]);
+
+  useEffect(() => {
+    if (isEditing) {
+      setFormData({
+          ...project,
+          totalCost: project.totalCost.toString()
+      });
+    } else {
+      setFormData({
+        name: '',
+        client: '',
+        totalCost: '',
+        stages: [{ id: Date.now(), name: '', completed: false }],
+      });
+    }
+  }, [project, isEditing, isOpen]);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleStageChange = (index, name) => {
+    const newStages = [...formData.stages];
+    newStages[index].name = name;
+    setFormData(prev => ({ ...prev, stages: newStages }));
+  };
+  
+  const addStage = () => {
+    setFormData(prev => ({
+      ...prev,
+      stages: [...prev.stages, { id: Date.now() + prev.stages.length, name: '', completed: false }]
+    }));
+  };
+
+  const removeStage = (index) => {
+    if (formData.stages.length <= 1) return;
+    const newStages = formData.stages.filter((_, i) => i !== index);
+    setFormData(prev => ({ ...prev, stages: newStages }));
+  };
+  
+  const handleSubmit = (e) => {
+      e.preventDefault();
+      onSave({
+          ...formData,
+          totalCost: parseFloat(formData.totalCost) || 0,
+      });
+      onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="sticky top-0 bg-white border-b border-gray-200 p-6 flex justify-between items-center z-10">
+          <h2 className="text-2xl font-bold text-gray-900">{isEditing ? 'Editar Proyecto' : 'Crear Nuevo Proyecto'}</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors"><XIcon className="w-8 h-8" /></button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          <div>
+            <label htmlFor="name" className="block text-sm font-medium text-gray-700">Nombre del Proyecto</label>
+            <input type="text" name="name" id="name" value={formData.name} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+          </div>
+          <div>
+            <label htmlFor="client" className="block text-sm font-medium text-gray-700">Cliente</label>
+            <input type="text" name="client" id="client" value={formData.client} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+          </div>
+          <div>
+            <label htmlFor="totalCost" className="block text-sm font-medium text-gray-700">Costo Total</label>
+            <div className="relative mt-1 rounded-md shadow-sm">
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3"><span className="text-gray-500 sm:text-sm">$</span></div>
+                <input type="number" name="totalCost" id="totalCost" value={formData.totalCost} onChange={handleChange} required min="0" step="0.01" className="block w-full rounded-md border-gray-300 pl-7 pr-12 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="0.00" />
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3"><span className="text-gray-500 sm:text-sm">USD</span></div>
+            </div>
+          </div>
+          
+          <div>
+            <h3 className="text-md font-medium text-gray-800 mb-2">Etapas del Proyecto</h3>
+            <div className="space-y-3">
+              {formData.stages.map((stage, index) => (
+                <div key={stage.id} className="flex items-center gap-2">
+                  <input type="text" value={stage.name} onChange={(e) => handleStageChange(index, e.target.value)} placeholder={`Etapa ${index + 1}`} required className="flex-grow block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                  <button type="button" onClick={() => removeStage(index)} disabled={formData.stages.length <= 1} className="p-2 text-red-500 hover:bg-red-100 rounded-full disabled:text-gray-300 disabled:hover:bg-transparent"><TrashIcon className="w-5 h-5"/></button>
+                </div>
+              ))}
+              <button type="button" onClick={addStage} className="text-sm text-indigo-600 font-semibold hover:text-indigo-800">+ Añadir otra etapa</button>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-4 pt-4 border-t">
+            <button type="button" onClick={onClose} className="bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg hover:bg-gray-300">Cancelar</button>
+            <button type="submit" className="bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-indigo-700">{isEditing ? 'Guardar Cambios' : 'Crear Proyecto'}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+
+export default function App() {
+  const [projects, setProjects] = useState(initialProjectsData);
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [editingProject, setEditingProject] = useState(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+
+  const handleUpdateProject = (updatedProject) => {
+    setProjects(projects.map(p => p.id === updatedProject.id ? updatedProject : p));
+  };
+  
+  const handleOpenCreateForm = () => {
+    setEditingProject(null);
+    setIsFormOpen(true);
+  };
+  
+  const handleOpenEditForm = (project) => {
+    setEditingProject(project);
+    setIsFormOpen(true);
+  };
+
+  const handleSaveProject = (projectData) => {
+    if (projectData.id) { // Editing existing project
+      setProjects(projects.map(p => p.id === projectData.id ? projectData : p));
+    } else { // Creating new project
+      const newProject = {
+        ...projectData,
+        id: Date.now(), // simple id generation
+        amountPaid: 0,
+        stages: projectData.stages.map(s => ({...s, completed: false}))
+      };
+      setProjects([...projects, newProject]);
+    }
+  };
+
+  const handleDeleteProject = (projectId) => {
+    if(window.confirm('¿Estás seguro de que quieres eliminar este proyecto? Esta acción no se puede deshacer.')) {
+        setProjects(projects.filter(p => p.id !== projectId));
+    }
+  };
+  
+  const handleCloseDetailModal = () => {
+    setSelectedProject(null);
+  }
+  
+  const handleCloseFormModal = () => {
+    setIsFormOpen(false);
+    setEditingProject(null);
+  }
+
+  return (
+    <div className="bg-gray-50 min-h-screen font-sans">
+      <div className="container mx-auto px-4 py-8 md:py-12">
+        <header className="flex flex-col md:flex-row justify-between items-center mb-12 gap-4">
+            <div className='text-center md:text-left'>
+                <h1 className="text-4xl md:text-5xl font-extrabold text-gray-800">Panel de Proyectos</h1>
+                <p className="mt-3 text-lg text-gray-600 max-w-2xl">Visualiza, crea y gestiona tus proyectos en un solo lugar.</p>
+            </div>
+            <button 
+                onClick={handleOpenCreateForm}
+                className="flex-shrink-0 flex items-center gap-2 bg-indigo-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                <PlusIcon />
+                Crear Proyecto
+            </button>
+        </header>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {projects.map(project => (
+            <ProjectCard 
+                key={project.id} 
+                project={project} 
+                onSelectProject={setSelectedProject}
+                onEdit={handleOpenEditForm}
+                onDelete={handleDeleteProject}
+            />
+          ))}
+        </div>
+      </div>
+      
+      <ProjectDetailModal 
+        project={selectedProject} 
+        onClose={handleCloseDetailModal}
+        onUpdateProject={handleUpdateProject}
+      />
+
+      <ProjectFormModal
+        isOpen={isFormOpen}
+        onClose={handleCloseFormModal}
+        onSave={handleSaveProject}
+        project={editingProject}
+      />
+    </div>
+  );
+}
+
